@@ -15,10 +15,11 @@ type Interface struct {
 }
 
 type Peer struct {
-	PublicKey string `yaml:"public_key"`
-	Endpoint  string `yaml:"endpoint"`
-	AllowedIP string `yaml:"allowedip"`
-	KeepAlive int    `yaml:"keep_alive"`
+	PublicKey    string `yaml:"public_key"`
+	PresharedKey string `yaml:"preshared_key"` // ← NEW
+	Endpoint     string `yaml:"endpoint"`
+	AllowedIP    string `yaml:"allowedip"`
+	KeepAlive    int    `yaml:"keep_alive"`
 }
 
 func base64KeyToHex(in string) (string, error) {
@@ -31,16 +32,33 @@ func base64KeyToHex(in string) (string, error) {
 }
 
 func (p *Peer) toIpcString() (string, error) {
-	key, err := base64KeyToHex(p.PublicKey)
+	pubKey, err := base64KeyToHex(p.PublicKey)
 	if err != nil {
 		return "", err
 	}
 
-	out := fmt.Sprintf("public_key=%s\nallowed_ip=%s\nendpoint=%s\n", key, p.AllowedIP, p.Endpoint)
+	out := fmt.Sprintf(
+		"public_key=%s\nallowed_ip=%s\nendpoint=%s\n",
+		pubKey,
+		p.AllowedIP,
+		p.Endpoint,
+	)
 
-	if p.KeepAlive > 0 {
-		out = fmt.Sprintf("%spersistent_keepalive_interval=%d\n", out, p.KeepAlive)
+	// 🔐 Add preshared key if present
+	if p.PresharedKey != "" {
+		psk, err := base64KeyToHex(p.PresharedKey)
+		if err != nil {
+			return "", err
+		}
+		out += fmt.Sprintf("preshared_key=%s\n", psk)
 	}
 
-	return out, err
+	if p.KeepAlive > 0 {
+		out += fmt.Sprintf(
+			"persistent_keepalive_interval=%d\n",
+			p.KeepAlive,
+		)
+	}
+
+	return out, nil
 }

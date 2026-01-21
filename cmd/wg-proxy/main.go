@@ -65,10 +65,15 @@ func main() {
 
 	if cfg.Proxy.Socks5.Addr != "" {
 		wg.Add(1)
+		var socks_options []socks5.Option
+		socks_options = append(socks_options, socks5.WithDial(func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dial.DialContext(ctx, network, addr)
+		}))
+		if len(cfg.Interface.Dns) > 0 {
+			socks_options = append(socks_options, socks5.WithResolver(dial))
+		}
 		proxy := socks5.NewServer(
-			socks5.WithDial(func(ctx context.Context, network, addr string) (net.Conn, error) {
-				return dial.DialContext(context.Background(), network, addr)
-			}),
+			socks_options...,
 		)
 
 		go func(wg *sync.WaitGroup, proxy *socks5.Server) {

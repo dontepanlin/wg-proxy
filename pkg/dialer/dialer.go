@@ -12,7 +12,7 @@ import (
 	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
-const MTU = 1420
+const MTU = 1280
 
 type Dialer struct {
 	net *netstack.Net
@@ -72,4 +72,17 @@ func NewDialer(debug bool, in Interface, peers ...Peer) (*Dialer, error) {
 
 func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return d.net.DialContext(ctx, network, address)
+}
+
+func (d *Dialer) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+	addr, err := d.net.LookupHost(name)
+	if err != nil {
+		return ctx, nil, err
+	}
+	if len(addr) == 0 {
+		return ctx, nil, fmt.Errorf("no addresses found for %s", name)
+	}
+	// Convert the first resolved IP address to net.IP
+	ip := net.ParseIP(addr[0])
+	return ctx, ip, nil
 }
